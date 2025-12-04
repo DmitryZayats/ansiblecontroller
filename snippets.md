@@ -570,3 +570,95 @@ https://docs.ansible.com/projects/ansible/latest/collections/community/general/m
         body: System {{ ansible_hostname }} has been successfully provisioned.
         secure: starttls
 ```
+
+# Manages packages with the dnf package manager
+
+https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/dnf_module.html
+
+```
+    - name: Install the latest version of Apache
+      ansible.builtin.dnf:
+        name: httpd
+        state: latest
+
+    - name: Install Apache >= 2.4
+      ansible.builtin.dnf:
+        name: httpd >= 2.4
+        state: present
+
+    - name: Install the latest version of Apache and MariaDB
+      ansible.builtin.dnf:
+        name:
+          - httpd
+          - mariadb-server
+        state: latest
+
+    - name: Remove the Apache package
+      ansible.builtin.dnf:
+        name: httpd
+        state: absent
+
+    - name: Install the latest version of Apache from the testing repo
+      ansible.builtin.dnf:
+        name: httpd
+        enablerepo: testing
+        state: present
+
+    - name: Upgrade all packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+
+    - name: Update the webserver, depending on which is installed on the system. Do not install the other one
+      ansible.builtin.dnf:
+        name:
+          - httpd
+          - nginx
+        state: latest
+        update_only: yes
+
+    - name: Install the nginx rpm from a remote repo
+      ansible.builtin.dnf:
+        name: 'http://nginx.org/packages/centos/6/noarch/RPMS/nginx-release-centos-6-0.el6.ngx.noarch.rpm'
+        state: present
+
+    - name: Install nginx rpm from a local file
+      ansible.builtin.dnf:
+        name: /usr/local/src/nginx-release-centos-6-0.el6.ngx.noarch.rpm
+        state: present
+
+    - name: Install Package based upon the file it provides
+      ansible.builtin.dnf:
+        name: /usr/bin/cowsay
+        state: present
+
+    - name: Install the 'Development tools' package group
+      ansible.builtin.dnf:
+        name: '@Development tools'
+        state: present
+
+    - name: Autoremove unneeded packages installed as dependencies
+      ansible.builtin.dnf:
+        autoremove: yes
+
+    - name: Uninstall httpd but keep its dependencies
+      ansible.builtin.dnf:
+        name: httpd
+        state: absent
+        autoremove: no
+
+    - name: Install a modularity appstream with defined stream and profile
+      ansible.builtin.dnf:
+        name: '@postgresql:9.6/client'
+        state: present
+
+    - name: Install a modularity appstream with defined stream
+      ansible.builtin.dnf:
+        name: '@postgresql:9.6'
+        state: present
+
+    - name: Install a modularity appstream with defined profile
+      ansible.builtin.dnf:
+        name: '@postgresql/client'
+        state: present
+```
