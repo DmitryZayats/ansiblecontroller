@@ -1,0 +1,31 @@
+- name: Run "ip a " command on standby VM
+  hosts: all
+  gather_facts: no
+
+
+  pre_tasks:
+
+    - name: Include proxy setup tasks
+      import_tasks: "setup_proxy_tasks.yaml"
+      when: port is defined
+
+
+  tasks:
+
+    - name: Run "ip a" command
+      shell: "ip a|grep inet"
+      register: result
+      when: inventory_hostname | regex_search("vm004")
+      debugger: on_unreachable
+
+    - name: Display hostname
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ result.stdout_lines }}"
+      when: inventory_hostname | regex_search("vm004")
+
+  post_tasks:
+
+    - name: Include proxy kill tasks
+      import_tasks: "kill_proxy_tasks.yaml"
+      when: port is defined

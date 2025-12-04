@@ -1,0 +1,68 @@
+- name: Template which includes most basic operations
+  hosts: ~.*vm021$
+  gather_facts: no
+  vars:
+    report_name: "neac_export"
+    smtp_host: "your_smtp_host_here"
+    from: "From here"
+    to: "e-mail of recipient here"
+
+  tasks:
+
+    - name: copy neac_rhel to /tmp/
+      copy:
+        src: /ansible/files/neac_rhel
+        dest: /tmp/neac_rhel
+        mode: '0744'
+
+    - name: run neac export command
+      shell: "/tmp/neac_rhel > /tmp/{{ report_name }}.csv"
+
+    - name: Rename generated export file
+      shell: "mv /tmp/{{ report_name }}.csv /tmp/{{ inventory_hostname }}_{{ report_name }}.csv"
+
+    - name: Fetch generated file
+      fetch:
+        src: /tmp/{{ inventory_hostname }}_{{ report_name }}.csv
+        dest: /ansible/reports/
+        flat: yes
+
+    - name: Remove default report file name if found
+      file:
+        path: /tmp/{{ inventory_hostname }}_{{ report_name }}.csv
+        state: absent
+
+    - name: Remove neac export code
+      file:
+        path: /tmp/neac_rhel
+        state: absent
+
+    - name: Read date and time
+      shell: "date +%m-%d-%Y_%H-%M"
+      register: date_and_time
+      delegate_to: localhost
+
+    - name: Rename fetched export file
+      shell: "mv /ansible/reports/{{ inventory_hostname }}_{{ report_name }}.csv /ansible/reports/{{ inventory_hostname }}_{{ report_name }}_{{ date_and_time.stdout }}.csv"
+      delegate_to: localhost
+
+    - name: Encrypt report file with the symmetric key
+      shell: "gpg --pinentry-mode loopback --passphrase-file=/root/vaultsecret -c /ansible/reports/{{ inventory_hostname }}_{{ report_name }}_{{ date_and_time.stdout }}.csv"
+      delegate_to: localhost
+
+    - name: Delete clear text version
+      shell: "rm /ansible/reports/{{ inventory_hostname }}_{{ report_name }}_{{ date_and_time.stdout }}.csv"
+      delegate_to: localhost
+
+    - name: Send mail via smtp relay
+      community.general.mail:
+        host: "{{ smtp_host }}"
+        from: "{{ from }}"
+        subject: "{{ report_name }} from ansible"
+        body: "{{ report_name }} from ansible"
+        to:
+        - "{{ to }}"
+        attach:
+        - /ansible/reports/{{ inventory_hostname }}_{{ report_name }}_{{ date_and_time.stdout }}.csv.gpg
+        charset: us-ascii
+      delegate_to: localhost

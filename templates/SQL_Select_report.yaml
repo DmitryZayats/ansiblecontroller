@@ -1,0 +1,79 @@
+- name: Run SQL query and send e-mail
+  hosts: all
+  gather_facts: no
+  vars:
+    report_name: "License_report"
+    smtp_host: "your_smtp_host_here"
+    from: "From here"
+    to: "e-mail of recipient here"
+
+
+  pre_tasks:
+
+    - name: Get current date and time
+      shell: date '+%m-%d-%Y_%H:%M'
+      register: dt
+      delegate_to: localhost
+
+    - name: Set date and time fact
+      set_fact:
+        date_and_time: "{{ dt.stdout }}"
+      delegate_to: localhost
+
+  tasks:
+
+    - name: Get license data
+      shell:
+        cmd: |
+          sqlplus -S '{{ oracle_user }}/{{ oracle_password }}' <<EOF
+          set feedback off;
+          set heading off;
+          SET SERVEROUTPUT ON SIZE 5000;
+          SET LINESIZE 2500;
+          set pagesize 5000;
+          set long 5000;
+          select json_object(*) from (select 1
+          from dual);
+          EOF
+      register: simple_out
+      when: inventory_hostname | regex_search("vm004")
+
+
+    - name: Transform response to json line by line
+      no_log: true
+      set_fact:
+        nasda: "{{ nasda | d([]) + [{ \"hostname\": inventory_hostname } | combine(item | from_json) ] }}"
+      with_items: "{{ simple_out.stdout_lines }}"
+      when: 
+        - inventory_hostname | regex_search("vm004") 
+        - item != ""
+
+
+  post_tasks:
+
+    - name: Create new spreadsheet and write data to it
+      xsl_write:
+        path: /ansible/reports/
+        workbook: "{{ report_name }}_{{ date_and_time }}.xlsx"
+        worksheet: "{{ report_name }}"
+        data: "{{ hostvars[ item ]['nasda'] }}"
+        create: true
+      loop: "{{ groups['all'] }}"
+      when: hostvars[ item ]['nasda'] is defined
+      delegate_to: localhost
+      run_once: true
+
+
+    - name: Send mail via smtp relay
+      community.general.mail:
+        host: "{{ smtp_host }}"
+        from: "{{ from }}"
+        subject: "{{ report_name }} from ansible"
+        body: "{{ report_name }} from ansible"
+        to:
+        - "{{ to }}"
+        attach:
+        - /ansible/reports/{{ report_name }}_{{ date_and_time }}.xlsx
+        charset: us-ascii
+      delegate_to: localhost
+      run_once: true
