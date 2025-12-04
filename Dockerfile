@@ -1,10 +1,5 @@
 FROM rockylinux:8
 
-ARG ANSIBLE_CORE_VERSION
-ARG ANSIBLE_LINT
-ENV ANSIBLE_LINT ${ANSIBLE_LINT}
-ENV ANSIBLE_CORE ${ANSIBLE_CORE_VERSION}
-
 # Labels.
 LABEL maintainer="Dmitry Zayats" \
       version="12-03-2025" \
